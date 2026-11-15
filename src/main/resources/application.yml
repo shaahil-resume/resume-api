@@ -4,6 +4,9 @@ server:
 auth:
   issuer: ${AUTH_ISSUER:http://localhost:8080}
 
+ai:
+  ingest:
+    on-startup: false # Enable explicitly to ingest knowledge files at startup.
 
 
 clients:
