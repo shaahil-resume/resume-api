@@ -54,6 +54,10 @@ public final class ChunkFactory {
     }
 
     public static String hash(KnowledgeDocument doc) {
+        return hash(doc, "text-embedding-3-small");
+    }
+
+    public static String hash(KnowledgeDocument doc, String embeddingModel) {
         String hashInput = text(doc) + "\n"
                 + value(doc.section()) + "|"
                 + value(doc.company()) + "|"
@@ -62,7 +66,8 @@ public final class ChunkFactory {
                 + value(doc.endDate()) + "|"
                 + String.join(",", doc.skills() == null
                 ? List.of()
-                : doc.skills().stream().map(ChunkFactory::value).toList());
+                : doc.skills().stream().map(ChunkFactory::value).toList()) + "|"
+                + value(embeddingModel);
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(hashInput.getBytes(StandardCharsets.UTF_8));
@@ -77,10 +82,14 @@ public final class ChunkFactory {
     }
 
     public static Chunk build(KnowledgeDocument doc, int index) {
+        return build(doc, index, "text-embedding-3-small", 1536);
+    }
+
+    public static Chunk build(KnowledgeDocument doc, int index, String embeddingModel, int embeddingDims) {
         String key = key(doc, index);
         UUID id = id(key);
         String text = text(doc);
-        String contentHash = hash(doc);
+        String contentHash = hash(doc, embeddingModel);
         Map<String, Object> metadata = new LinkedHashMap<>();
         putIfPresent(metadata, "section", doc.section());
         putIfPresent(metadata, "company", doc.company());
@@ -91,6 +100,8 @@ public final class ChunkFactory {
             metadata.put("skills", doc.skills());
         }
         putIfPresent(metadata, "docVersion", doc.docVersion());
+        putIfPresent(metadata, "embeddingModel", embeddingModel);
+        metadata.put("embeddingDims", embeddingDims);
         metadata.put("key", key);
         metadata.put("contentHash", contentHash);
         return new Chunk(key, id, text, metadata, contentHash);

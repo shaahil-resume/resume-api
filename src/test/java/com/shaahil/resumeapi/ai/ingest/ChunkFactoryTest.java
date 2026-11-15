@@ -36,8 +36,10 @@ class ChunkFactoryTest {
 
     @Test
     void hashIsStableForTheSameDocument() {
-        assertThat(ChunkFactory.hash(document("experience", "Acme", "Engineer", "Shaahil Abraham")))
-                .isEqualTo(ChunkFactory.hash(document("experience", "Acme", "Engineer", "Shaahil Abraham")));
+        KnowledgeDocument document = document("experience", "Acme", "Engineer", "Shaahil Abraham");
+
+        assertThat(ChunkFactory.hash(document, "test-embedding-model"))
+                .isEqualTo(ChunkFactory.hash(document, "test-embedding-model"));
     }
 
     @Test
@@ -46,7 +48,8 @@ class ChunkFactoryTest {
         KnowledgeDocument changed = new KnowledgeDocument(original.section(), original.company(), original.role(),
                 original.startDate(), original.endDate(), original.skills(), original.docVersion(), "A different body.");
 
-        assertThat(ChunkFactory.hash(changed)).isNotEqualTo(ChunkFactory.hash(original));
+        assertThat(ChunkFactory.hash(changed, "test-embedding-model"))
+                .isNotEqualTo(ChunkFactory.hash(original, "test-embedding-model"));
     }
 
     @Test
@@ -55,7 +58,8 @@ class ChunkFactoryTest {
         KnowledgeDocument changed = new KnowledgeDocument(original.section(), "Other Corp", original.role(),
                 original.startDate(), original.endDate(), original.skills(), original.docVersion(), original.body());
 
-        assertThat(ChunkFactory.hash(changed)).isNotEqualTo(ChunkFactory.hash(original));
+        assertThat(ChunkFactory.hash(changed, "test-embedding-model"))
+                .isNotEqualTo(ChunkFactory.hash(original, "test-embedding-model"));
     }
 
     @Test
@@ -64,7 +68,16 @@ class ChunkFactoryTest {
         KnowledgeDocument changed = new KnowledgeDocument(original.section(), original.company(), original.role(),
                 original.startDate(), original.endDate(), original.skills(), "2", original.body());
 
-        assertThat(ChunkFactory.hash(changed)).isEqualTo(ChunkFactory.hash(original));
+        assertThat(ChunkFactory.hash(changed, "test-embedding-model"))
+                .isEqualTo(ChunkFactory.hash(original, "test-embedding-model"));
+    }
+
+    @Test
+    void changedEmbeddingModelChangesHash() {
+        KnowledgeDocument document = document("experience", "Acme", "Engineer", "Shaahil Abraham");
+
+        assertThat(ChunkFactory.hash(document, "test-embedding-model-a"))
+                .isNotEqualTo(ChunkFactory.hash(document, "test-embedding-model-b"));
     }
 
     @Test
@@ -83,13 +96,15 @@ class ChunkFactoryTest {
         KnowledgeDocument document = new KnowledgeDocument(
                 "experience", "", " ", "2021-01", "2024", List.of("Java"), " ", "Body");
 
-        Chunk chunk = ChunkFactory.build(document, 2);
+        Chunk chunk = ChunkFactory.build(document, 2, "test-embedding-model", 1536);
 
         assertThat(chunk.metadata())
                 .containsEntry("key", chunk.key())
                 .containsEntry("contentHash", chunk.contentHash())
                 .containsEntry("section", "experience")
                 .containsEntry("skills", List.of("Java"))
+                .containsEntry("embeddingModel", "test-embedding-model")
+                .containsEntry("embeddingDims", 1536)
                 .doesNotContainKeys("company", "role", "docVersion");
     }
 
