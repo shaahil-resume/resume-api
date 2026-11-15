@@ -1,0 +1,74 @@
+server:
+  port: 8080
+
+auth:
+  issuer: ${AUTH_ISSUER:http://localhost:8080}
+
+
+
+clients:
+  postman:
+    secret: ${POSTMAN_CLIENT_SECRET}
+  bff-admin:
+    secret: ${BFF_ADMIN_CLIENT_SECRET}
+    redirect-uri: ${BFF_ADMIN_REDIRECT_URI:http://localhost:3000/auth/callback}
+  pitcher:
+    secret: ${PITCHER_CLIENT_SECRET}
+  ai-module:
+    secret: ${AI_MODULE_CLIENT_SECRET}
+  bff:
+    secret: ${BFF_CLIENT_SECRET}
+
+spring:
+  application:
+    name: resume-api
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        model: gpt-4o-mini
+      embedding:
+        model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        dimensions: 1536
+        distance-type: COSINE_DISTANCE
+        index-type: NONE
+        initialize-schema: false
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 500ms
+        multiplier: 2
+        max-interval: 5s
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:dummy-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:dummy-client-secret}
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/resume_db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    org.springframework.security.oauth2.server.authorization: TRACE
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+
