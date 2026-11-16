@@ -3,17 +3,18 @@ package com.shaahil.resumeapi;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.junit.jupiter.Container;
 
-@Testcontainers
 public abstract class PostgresTestContainerConfig {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("pgvector/pgvector:pg16")
-            .withDatabaseName("resume_db")
-            .withUsername("test")
-            .withPassword("test");
+    static final PostgreSQLContainer<?> POSTGRES;
+
+    static {
+        POSTGRES = new PostgreSQLContainer<>("pgvector/pgvector:pg16")
+                .withDatabaseName("resume_db")
+                .withUsername("test")
+                .withPassword("test");
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {

@@ -7,20 +7,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.Embedding;
-import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.embedding.EmbeddingOptions;
-import org.springframework.ai.embedding.EmbeddingRequest;
-import org.springframework.ai.embedding.EmbeddingResponse;
-import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -29,19 +20,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Import(IngestionServiceIT.TestEmbeddingConfiguration.class)
+@Import(AiTestEmbeddingConfiguration.class)
 class IngestionServiceIT extends PostgresTestContainerConfig {
 
     private static final List<String> FIXTURE_NAMES = List.of(
@@ -74,7 +62,7 @@ class IngestionServiceIT extends PostgresTestContainerConfig {
             ClassPathResource resource = new ClassPathResource("knowledge-fixtures/" + fixtureName);
             Files.copy(resource.getInputStream(), fixtureDirectory.resolve(fixtureName));
         }
-        embeddingModel.resetCalls();
+        embeddingModel.reset();
     }
 
     @AfterEach
@@ -211,84 +199,4 @@ class IngestionServiceIT extends PostgresTestContainerConfig {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    static class TestEmbeddingConfiguration {
-
-        @Bean
-        @Primary
-        DeterministicEmbeddingModel embeddingModel() {
-            return new DeterministicEmbeddingModel();
-        }
-    }
-
-    static class DeterministicEmbeddingModel implements EmbeddingModel {
-
-        private final AtomicInteger embeddedTexts = new AtomicInteger();
-
-        @Override
-        public float[] embed(Document document) {
-            return call(new EmbeddingRequest(List.of(document.getText()), EmbeddingOptions.builder().build()))
-                    .getResult().getOutput();
-        }
-
-        @Override
-        public List<float[]> embed(List<Document> documents, EmbeddingOptions options,
-                                   BatchingStrategy batchingStrategy) {
-            EmbeddingOptions effectiveOptions = options == null ? EmbeddingOptions.builder().build() : options;
-            return call(new EmbeddingRequest(
-                    documents.stream().map(Document::getText).toList(), effectiveOptions))
-                    .getResults().stream()
-                    .map(Embedding::getOutput)
-                    .toList();
-        }
-
-        @Override
-        public EmbeddingResponse call(EmbeddingRequest request) {
-            // PgVectorStore can embed in batches; count texts so skipped rows are observable independently of call shape.
-            embeddedTexts.addAndGet(request.getInstructions().size());
-            List<Embedding> embeddings = new ArrayList<>();
-            for (int index = 0; index < request.getInstructions().size(); index++) {
-                embeddings.add(new Embedding(vectorFor(request.getInstructions().get(index)), index));
-            }
-            return new EmbeddingResponse(embeddings);
-        }
-
-        @Override
-        public int dimensions() {
-            return 1536;
-        }
-
-        int calls() {
-            return embeddedTexts();
-        }
-
-        void resetCalls() {
-            reset();
-        }
-
-        int embeddedTexts() {
-            return embeddedTexts.get();
-        }
-
-        void reset() {
-            embeddedTexts.set(0);
-        }
-
-        private static float[] vectorFor(String text) {
-            float[] vector = new float[1536];
-            String[] words = text.toLowerCase(Locale.ROOT).split("[^\\p{Alnum}]+");
-            boolean hasWord = false;
-            for (String word : words) {
-                if (!word.isBlank()) {
-                    hasWord = true;
-                    int index = Math.floorMod(word.hashCode(), vector.length);
-                    vector[index] += 1.0f;
-                }
-            }
-            if (!hasWord) {
-                vector[Math.floorMod(text.hashCode(), vector.length)] = 1.0f;
-            }
-            return vector;
-        }
-    }
 }
