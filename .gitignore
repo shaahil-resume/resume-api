@@ -36,3 +36,4 @@ target/
 # Local secrets
 .env
 *.local.yml
+candidate.json

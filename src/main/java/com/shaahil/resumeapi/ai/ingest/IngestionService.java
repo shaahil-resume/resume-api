@@ -25,6 +25,8 @@ import java.util.UUID;
 @Service
 public class IngestionService {
 
+    public static final String DEFAULT_LOCATION = "classpath*:knowledge/deep-dive/*.md";
+
     private static final Logger log = LoggerFactory.getLogger(IngestionService.class);
 
     private final VectorStore vectorStore;
@@ -50,7 +52,7 @@ public class IngestionService {
     }
 
     public IngestionResult ingest() {
-        return ingest("classpath*:knowledge/*.md");
+        return ingest(DEFAULT_LOCATION);
     }
 
     public IngestionResult ingest(String locationPattern) {
