@@ -24,10 +24,13 @@ public class ChatController {
 
     private final ChatService chatService;
     private final VisitorRateLimiter rateLimiter;
+    private final ChatEventPublisher chatEvents;
 
-    public ChatController(ChatService chatService, VisitorRateLimiter rateLimiter) {
+    public ChatController(ChatService chatService, VisitorRateLimiter rateLimiter,
+                          ChatEventPublisher chatEvents) {
         this.chatService = chatService;
         this.rateLimiter = rateLimiter;
+        this.chatEvents = chatEvents;
     }
 
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -35,6 +38,7 @@ public class ChatController {
                                               HttpServletRequest http) {
         VisitorRateLimiter.Decision decision = rateLimiter.check(VisitorAddress.of(http));
         if (!decision.allowed()) {
+            chatEvents.rateLimited();
             throw new TooManyQuestionsException(decision.retryAfterSeconds());
         }
         return chatService.answer(request.question())
