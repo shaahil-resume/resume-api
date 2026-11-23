@@ -25,4 +25,21 @@ class ReplyTemplatesTest {
                 .doesNotContainIgnoringCase("does not have")
                 .doesNotContainIgnoringCase("doesn't have");
     }
+
+    @Test
+    void fallbackIsFirstPersonAndPointsToTheContactForm() {
+        assertThat(ReplyTemplates.fallback()).isNotBlank()
+                .contains("try again")
+                .contains("contact form")
+                .doesNotContainIgnoringCase("exception")
+                .doesNotContainIgnoringCase("error");
+    }
+
+    @Test
+    void dailyLimitReplyPointsToTheContactForm() {
+        assertThat(ReplyTemplates.dailyLimitReached()).isNotBlank()
+                .contains("tomorrow")
+                .contains("contact form")
+                .doesNotContainIgnoringCase("error");
+    }
 }
