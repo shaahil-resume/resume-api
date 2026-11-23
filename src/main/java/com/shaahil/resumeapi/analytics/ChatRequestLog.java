@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 /** One row per chat request. Holds counts and timings only, never the question or the answer. */
@@ -49,7 +50,16 @@ public class ChatRequestLog {
     @Column(nullable = false, length = 20)
     private String promptVersion;
 
-    static ChatRequestLog from(ChatCompleted event) {
+    @Column
+    private Integer promptTokens;
+
+    @Column
+    private Integer completionTokens;
+
+    @Column(precision = 12, scale = 6)
+    private BigDecimal estimatedCostUsd;
+
+    static ChatRequestLog from(ChatCompleted event, BigDecimal estimatedCostUsd) {
         ChatRequestLog log = new ChatRequestLog();
         log.occurredAt = event.occurredAt();
         log.outcome = event.outcome();
@@ -58,6 +68,9 @@ public class ChatRequestLog {
         log.latencyMs = event.latencyMs();
         log.retries = event.retries();
         log.promptVersion = event.promptVersion();
+        log.promptTokens = event.promptTokens();
+        log.completionTokens = event.completionTokens();
+        log.estimatedCostUsd = estimatedCostUsd;
         return log;
     }
 }

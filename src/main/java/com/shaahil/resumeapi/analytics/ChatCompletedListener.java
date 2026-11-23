@@ -17,16 +17,19 @@ public class ChatCompletedListener {
     private static final Logger log = LoggerFactory.getLogger(ChatCompletedListener.class);
 
     private final ChatRequestLogRepository repository;
+    private final CostEstimator costEstimator;
 
-    public ChatCompletedListener(ChatRequestLogRepository repository) {
+    public ChatCompletedListener(ChatRequestLogRepository repository, CostEstimator costEstimator) {
         this.repository = repository;
+        this.costEstimator = costEstimator;
     }
 
     @Async
     @EventListener
     public void on(ChatCompleted event) {
         try {
-            repository.save(ChatRequestLog.from(event));
+            repository.save(ChatRequestLog.from(event,
+                    costEstimator.estimate(event.promptTokens(), event.completionTokens())));
         } catch (RuntimeException exception) {
             log.warn("could not record chat request errorType={}", exception.getClass().getSimpleName());
         }

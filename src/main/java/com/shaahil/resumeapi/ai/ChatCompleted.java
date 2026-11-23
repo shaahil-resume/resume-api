@@ -13,7 +13,10 @@ import java.time.Instant;
  * @param latencyMs     time from request start to the last event
  * @param retries       model call retries before the first token
  * @param promptVersion prompt version in use
+ * @param promptTokens  tokens the model counted in the prompt, null when not reported
+ * @param completionTokens tokens the model counted in the reply, null when not reported
  */
 public record ChatCompleted(Instant occurredAt, ChatOutcome outcome, double bestScore, int chunksKept,
-                            long latencyMs, int retries, String promptVersion) {
+                            long latencyMs, int retries, String promptVersion,
+                            Integer promptTokens, Integer completionTokens) {
 }

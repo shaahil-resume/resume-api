@@ -95,7 +95,7 @@ public class ChatService {
             AtomicBoolean started = new AtomicBoolean();
             return Flux.defer(() -> {
                         stats.attempts.incrementAndGet();
-                        return answerStreamer.stream(systemMessage, userMessage);
+                        return answerStreamer.stream(systemMessage, userMessage, usage -> stats.usage = usage);
                     })
                     .timeout(chat.timeout())
                     .doOnNext(token -> started.set(true))
@@ -123,7 +123,7 @@ public class ChatService {
         }
         long latencyMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - stats.startNanos);
         chatEvents.publish(outcome, stats.bestScore, stats.chunksKept, latencyMs,
-                Math.max(0, stats.attempts.get() - 1));
+                Math.max(0, stats.attempts.get() - 1), stats.usage);
     }
 
     /** What happened during one request; written by the thread running the stream. */
@@ -134,5 +134,6 @@ public class ChatService {
         private volatile ChatOutcome outcome;
         private volatile double bestScore;
         private volatile int chunksKept;
+        private volatile TokenUsage usage;
     }
 }
