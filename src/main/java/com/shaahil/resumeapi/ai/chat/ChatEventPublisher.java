@@ -26,10 +26,13 @@ public class ChatEventPublisher {
         this.clock = clock;
     }
 
-    public void publish(ChatOutcome outcome, double bestScore, int chunksKept, long latencyMs, int retries) {
+    public void publish(ChatOutcome outcome, double bestScore, int chunksKept, long latencyMs, int retries,
+                        TokenUsage usage) {
         try {
             publisher.publishEvent(new ChatCompleted(clock.instant(), outcome, bestScore, chunksKept,
-                    latencyMs, retries, properties.prompt().version()));
+                    latencyMs, retries, properties.prompt().version(),
+                    usage == null ? null : usage.promptTokens(),
+                    usage == null ? null : usage.completionTokens()));
         } catch (RuntimeException exception) {
             log.warn("could not publish chat event errorType={}", exception.getClass().getSimpleName());
         }
@@ -37,6 +40,6 @@ public class ChatEventPublisher {
 
     /** A rate-limited request never reaches the chat service, so the controller reports it. */
     public void rateLimited() {
-        publish(ChatOutcome.RATE_LIMITED, 0.0, 0, 0, 0);
+        publish(ChatOutcome.RATE_LIMITED, 0.0, 0, 0, 0, null);
     }
 }

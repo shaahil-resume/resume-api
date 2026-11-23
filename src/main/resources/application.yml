@@ -16,6 +16,11 @@ ai:
     daily-model-calls: 500
 
 
+analytics:
+  pricing: # US dollars per 1M tokens; gpt-4o-mini list prices, update when the chat model changes.
+    input-per-million-tokens: 0.15
+    output-per-million-tokens: 0.60
+
 clients:
   postman:
     secret: ${POSTMAN_CLIENT_SECRET}
@@ -37,6 +42,7 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         model: gpt-4o-mini
+        stream-usage: true # Adds a final stream chunk with token counts, used for cost tracking.
       embedding:
         model: text-embedding-3-small
     vectorstore:

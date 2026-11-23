@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.slf4j.LoggerFactory;
@@ -233,6 +234,33 @@ class ChatServiceTest {
             assertThat(event.retries()).isZero();
             assertThat(event.latencyMs()).isNotNegative();
             assertThat(event.promptVersion()).isEqualTo("v5");
+            assertThat(event.promptTokens()).isNull();
+            assertThat(event.completionTokens()).isNull();
+        });
+    }
+
+    @Test
+    void publishesTokenUsageWhenTheStreamerReportsIt() {
+        List<ChatCompleted> sink = new ArrayList<>();
+        AnswerStreamer streamer = new AnswerStreamer() {
+            @Override
+            public Flux<String> stream(String systemMessage, String userMessage) {
+                return Flux.just("ok");
+            }
+
+            @Override
+            public Flux<String> stream(String systemMessage, String userMessage, Consumer<TokenUsage> usageSink) {
+                return Flux.just("ok").doOnComplete(() -> usageSink.accept(new TokenUsage(120, 40)));
+            }
+        };
+
+        service(answerOutcome(), streamer, fastChat(2, Duration.ofSeconds(5)), unlimitedCap(), sink)
+                .answer("What did he build?").collectList().block();
+
+        assertThat(sink).singleElement().satisfies(event -> {
+            assertThat(event.outcome()).isEqualTo(ChatOutcome.ANSWERED);
+            assertThat(event.promptTokens()).isEqualTo(120);
+            assertThat(event.completionTokens()).isEqualTo(40);
         });
     }
 
