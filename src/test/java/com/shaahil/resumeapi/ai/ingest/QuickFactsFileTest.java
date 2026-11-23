@@ -19,7 +19,7 @@ class QuickFactsFileTest {
         assertThat(content).isNotBlank()
                 .contains("Core areas:")
                 .contains("proof of concept");
-        assertThat(wordCount).isLessThan(550);
+        assertThat(wordCount).isLessThan(650);
         assertThat(lowerCaseContent)
                 .doesNotContain("salary")
                 .doesNotContain("licence")

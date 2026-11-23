@@ -18,9 +18,9 @@ class ReplyTemplatesTest {
 
     private static void assertTemplate(String template) {
         assertThat(template).isNotBlank()
-                .contains("What has he built with Spring Boot?")
-                .contains("Where is he based?")
-                .contains("What are his main skills?")
+                .contains("What have I built with Spring Boot?")
+                .contains("Where am I based?")
+                .contains("What are my main skills?")
                 .doesNotContainIgnoringCase("lack")
                 .doesNotContainIgnoringCase("does not have")
                 .doesNotContainIgnoringCase("doesn't have");

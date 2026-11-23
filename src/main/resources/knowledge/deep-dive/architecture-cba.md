@@ -19,7 +19,7 @@ skills:
 docVersion: 1
 ---
 
-Core Benefits Administration (CBA) is the platform used to run employee benefits for large employers, and Shaahil worked on it at Wipro and at Alight. It is made up of 10 to 15 applications, each with a specific job and each deployed separately. The three main ones are RI, MSS and SITE, with multiple screens each.
+Core Benefits Administration (CBA) is the platform used to run employee benefits for large employers, and Shaahil worked on it at Wipro and at Alight. It is made up of 10 to 15 applications, each with a specific job and each deployed separately. The three main ones are RI, MSS and SITE, with multiple screens each. The platform serves 50+ enterprise clients and their employees, who use it as end users.
 
 RI is the configuration application. Every client has its own configuration there, and RI writes it to the database. MSS (Manager Self Service, used by managers) and SITE (the interface end users use to see and choose their benefits) read that configuration. For example, changing the calculation for a retirement fund for one employer in RI shows up for that employer in MSS and in SITE.
 

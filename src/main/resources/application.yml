@@ -7,6 +7,9 @@ auth:
 ai:
   ingest:
     on-startup: false # Enable explicitly to ingest knowledge files at startup.
+  retrieval:
+    floor: 0.10
+    threshold: 0.10
 
 
 clients:
@@ -51,6 +54,9 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID:dummy-client-id}
             client-secret: ${GOOGLE_CLIENT_SECRET:dummy-client-secret}
+  threads:
+    virtual:
+      enabled: true
 
   datasource:
     url: jdbc:postgresql://localhost:5433/resume_db
