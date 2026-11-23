@@ -129,6 +129,7 @@ public class ClientSeeder implements ApplicationRunner {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("contact:submit")
+                .scope("ai:chat")
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(5))
                         .build())

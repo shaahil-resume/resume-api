@@ -55,7 +55,7 @@ public record AiProperties(Retrieval retrieval, Chat chat, Prompt prompt) {
     public record Prompt(String version) {
 
         public Prompt {
-            version = version == null || version.isBlank() ? "v1" : version;
+            version = version == null || version.isBlank() ? "v5" : version;
         }
     }
 

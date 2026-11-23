@@ -26,6 +26,17 @@ class QuickFactsProviderTest {
     }
 
     @Test
+    void realQuickFactsContainTechnologyTimeline() {
+        QuickFactsProvider provider = new QuickFactsProvider(new ClassPathResource("knowledge/quick-facts.md"));
+
+        assertThat(provider.text())
+                .contains("Technology timeline")
+                .contains("MongoDB")
+                .contains("Kubernetes")
+                .contains("JUnit and Mockito");
+    }
+
+    @Test
     void missingFileFailsClearly() {
         assertThatIllegalStateException()
                 .isThrownBy(() -> new QuickFactsProvider(

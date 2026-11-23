@@ -23,3 +23,5 @@ Shaahil reviews code and gives feedback to teammates. He takes part in design an
 He owns release and deployment work and has used blue/green, canary and rollback release strategies. He works directly with clients and business analysts to turn requirements into technical solutions.
 
 His technical practice includes Java, Spring Boot and microservices design, with code review, technical mentoring, architecture decisions, TDD and BDD used across delivery work. He has contributed to platform direction, reviewed teammate code, and supported technical ramp-up across roles.
+
+Leadership: I have not held a formal team lead title. I mentored junior engineers. I do not claim to have led a team.

@@ -74,6 +74,8 @@ public class SecurityConfig {
                         // Used by ai-module.
                         .requestMatchers(HttpMethod.GET, "/api/profile/export")
                         .hasAuthority("SCOPE_profile:export")
+                        .requestMatchers(HttpMethod.POST, "/api/ai/chat")
+                        .hasAuthority("SCOPE_ai:chat")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(Customizer.withDefaults()));

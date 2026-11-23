@@ -13,7 +13,7 @@ class AiPropertiesTest {
 
         assertThat(properties.retrieval()).isEqualTo(new AiProperties.Retrieval(0.0, 0.0, 10, 5));
         assertThat(properties.chat()).isEqualTo(new AiProperties.Chat(0.2, 500, 10));
-        assertThat(properties.prompt()).isEqualTo(new AiProperties.Prompt("v1"));
+        assertThat(properties.prompt()).isEqualTo(new AiProperties.Prompt("v5"));
     }
 
     @Test
