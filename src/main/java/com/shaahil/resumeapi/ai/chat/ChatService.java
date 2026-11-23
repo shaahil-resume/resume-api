@@ -47,7 +47,7 @@ public class ChatService {
     public Flux<ChatEvent> answer(String question) {
         return Flux.defer(() -> {
             RequestStats stats = new RequestStats();
-            return respond(question, stats)
+            return Flux.defer(() -> respond(question, stats))
                     .onErrorResume(error -> fallback(error, stats))
                     .doOnComplete(() -> publish(stats))
                     .doOnCancel(() -> publish(stats));
