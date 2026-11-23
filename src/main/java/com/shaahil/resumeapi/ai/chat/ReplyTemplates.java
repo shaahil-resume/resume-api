@@ -12,6 +12,11 @@ public class ReplyTemplates {
         return "Hi! I can answer questions about my experience, projects and skills." + EXAMPLES;
     }
 
+    public static String fallback() {
+        return "Sorry, I couldn't answer that just now. Please try again in a moment, "
+                + "or ask me directly through the contact form.";
+    }
+
     public static String declineBelowFloor() {
         return "I only answer questions about my work and background." + EXAMPLES;
     }

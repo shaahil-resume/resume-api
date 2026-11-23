@@ -2,6 +2,8 @@ package com.shaahil.resumeapi.ai;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
@@ -12,7 +14,8 @@ class AiPropertiesTest {
         AiProperties properties = new AiProperties(null, null, null);
 
         assertThat(properties.retrieval()).isEqualTo(new AiProperties.Retrieval(0.0, 0.0, 10, 5));
-        assertThat(properties.chat()).isEqualTo(new AiProperties.Chat(0.2, 500, 10));
+        assertThat(properties.chat()).isEqualTo(new AiProperties.Chat(0.2, 500, 10,
+                Duration.ofSeconds(15), 2, Duration.ofMillis(300)));
         assertThat(properties.prompt()).isEqualTo(new AiProperties.Prompt("v5"));
     }
 
@@ -40,14 +43,38 @@ class AiPropertiesTest {
     @Test
     void temperatureAboveOneIsRejected() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new AiProperties.Chat(1.1, 500, 10))
+                .isThrownBy(() -> new AiProperties.Chat(1.1, 500, 10, null, null, null))
                 .withMessageContaining("ai.chat.temperature");
     }
 
     @Test
     void zeroTurnCapIsRejected() {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 0))
+                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 0, null, null, null))
                 .withMessageContaining("ai.chat.turnCap");
+    }
+
+    @Test
+    void nonPositiveTimeoutIsRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 10, Duration.ZERO, null, null))
+                .withMessageContaining("ai.chat.timeout");
+    }
+
+    @Test
+    void tooManyRetriesAreRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 10, null, 6, null))
+                .withMessageContaining("ai.chat.maxRetries");
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 10, null, -1, null))
+                .withMessageContaining("ai.chat.maxRetries");
+    }
+
+    @Test
+    void negativeRetryBackoffIsRejected() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new AiProperties.Chat(0.2, 500, 10, null, null, Duration.ofMillis(-1)))
+                .withMessageContaining("ai.chat.retryBackoff");
     }
 }

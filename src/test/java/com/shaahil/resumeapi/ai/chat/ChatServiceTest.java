@@ -13,6 +13,7 @@ import org.springframework.core.io.ByteArrayResource;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,7 +103,106 @@ class ChatServiceTest {
         assertThat(messages).allSatisfy(message -> assertThat(message).doesNotContain(visitorText));
     }
 
+    @Test
+    void streamerFailureBecomesFallbackReplyAfterRetries() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> {
+            calls.incrementAndGet();
+            return Flux.error(new IllegalStateException("boom"));
+        };
+
+        List<ChatEvent> events = service(answerOutcome(), streamer, fastChat(2, Duration.ofSeconds(5)))
+                .answer("What did he build?").collectList().block();
+
+        assertThat(events).extracting(ChatEvent::type).containsExactly("token", "done");
+        assertThat(events).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.fallback());
+        assertThat(calls).hasValue(3);
+    }
+
+    @Test
+    void transientFailureBeforeFirstTokenIsRetried() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> calls.incrementAndGet() == 1
+                ? Flux.error(new IllegalStateException("boom"))
+                : Flux.just("ok");
+
+        List<ChatEvent> events = service(answerOutcome(), streamer, fastChat(2, Duration.ofSeconds(5)))
+                .answer("What did he build?").collectList().block();
+
+        assertThat(events).extracting(ChatEvent::type).containsExactly("token", "citations", "done");
+        assertThat(events).first().extracting(ChatEvent::data).isEqualTo("ok");
+        assertThat(calls).hasValue(2);
+    }
+
+    @Test
+    void failureAfterFirstTokenIsNotRetried() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> {
+            calls.incrementAndGet();
+            return Flux.concat(Flux.just("part"), Flux.error(new IllegalStateException("boom")));
+        };
+
+        List<ChatEvent> events = service(answerOutcome(), streamer, fastChat(2, Duration.ofSeconds(5)))
+                .answer("What did he build?").collectList().block();
+
+        assertThat(events).extracting(ChatEvent::type).containsExactly("token", "token", "done");
+        assertThat(events).extracting(ChatEvent::data).containsExactly("part", ReplyTemplates.fallback(), "");
+        assertThat(calls).hasValue(1);
+    }
+
+    @Test
+    void silentModelTimesOutIntoFallbackReply() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> {
+            calls.incrementAndGet();
+            return Flux.never();
+        };
+
+        List<ChatEvent> events = service(answerOutcome(), streamer, fastChat(1, Duration.ofMillis(100)))
+                .answer("What did he build?").collectList().block();
+
+        assertThat(events).extracting(ChatEvent::type).containsExactly("token", "done");
+        assertThat(events).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.fallback());
+        assertThat(calls).hasValue(2);
+    }
+
+    @Test
+    void routerFailureBecomesFallbackReplyWithoutCallingTheModel() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> {
+            calls.incrementAndGet();
+            return Flux.just("unexpected");
+        };
+        SearchService failing = new SearchService(null,
+                new AiProperties(new AiProperties.Retrieval(0.0, 0.0, 10, 5), null, null)) {
+            @Override
+            public SearchOutcome search(String question) {
+                throw new IllegalStateException("embedding service down");
+            }
+        };
+
+        List<ChatEvent> events = service(failing, streamer, fastChat(2, Duration.ofSeconds(5)))
+                .answer("What did he build?").collectList().block();
+
+        assertThat(events).extracting(ChatEvent::type).containsExactly("token", "done");
+        assertThat(events).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.fallback());
+        assertThat(calls).hasValue(0);
+    }
+
+    private static SearchOutcome answerOutcome() {
+        return new SearchOutcome(true, 0.9, List.of(
+                new RetrievedChunk("one", "experience:wipro:engineer:0", "one", 0.9, Map.of())));
+    }
+
+    private static AiProperties.Chat fastChat(int maxRetries, Duration timeout) {
+        return new AiProperties.Chat(0.2, 500, 10, timeout, maxRetries, Duration.ofMillis(1));
+    }
+
     private static ChatService service(SearchOutcome outcome, AnswerStreamer streamer) {
+        return service(outcome, streamer, null);
+    }
+
+    private static ChatService service(SearchOutcome outcome, AnswerStreamer streamer, AiProperties.Chat chat) {
         SearchService searchService = new SearchService(null,
                 new AiProperties(new AiProperties.Retrieval(0.0, 0.0, 10, 5), null, null)) {
             @Override
@@ -110,10 +210,15 @@ class ChatServiceTest {
                 return outcome;
             }
         };
+        return service(searchService, streamer, chat);
+    }
+
+    private static ChatService service(SearchService searchService, AnswerStreamer streamer,
+                                       AiProperties.Chat chat) {
         PreChatRouter router = new PreChatRouter(searchService);
         PromptBuilder promptBuilder = new PromptBuilder(
                 new QuickFactsProvider(new ByteArrayResource("facts".getBytes(StandardCharsets.UTF_8))),
                 new AiProperties(null, null, null));
-        return new ChatService(router, promptBuilder, streamer);
+        return new ChatService(router, promptBuilder, streamer, new AiProperties(null, chat, null));
     }
 }
