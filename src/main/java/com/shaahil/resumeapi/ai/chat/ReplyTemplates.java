@@ -17,6 +17,11 @@ public class ReplyTemplates {
                 + "or ask me directly through the contact form.";
     }
 
+    public static String dailyLimitReached() {
+        return "I've answered a lot of questions today and need to pause for now. "
+                + "Please try again tomorrow, or ask me directly through the contact form.";
+    }
+
     public static String declineBelowFloor() {
         return "I only answer questions about my work and background." + EXAMPLES;
     }

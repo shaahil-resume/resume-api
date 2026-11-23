@@ -10,6 +10,10 @@ ai:
   retrieval:
     floor: 0.10
     threshold: 0.10
+  limits:
+    per-minute: 10
+    per-hour: 60
+    daily-model-calls: 500
 
 
 clients:

@@ -1,6 +1,7 @@
 package com.shaahil.resumeapi.ai.chat;
 
 import com.shaahil.resumeapi.ai.AiProperties;
+import com.shaahil.resumeapi.ai.limits.DailyModelCallCap;
 import com.shaahil.resumeapi.ai.retrieval.RetrievedChunk;
 import com.shaahil.resumeapi.ai.retrieval.SearchOutcome;
 import org.slf4j.Logger;
@@ -23,13 +24,15 @@ public class ChatService {
     private final PromptBuilder promptBuilder;
     private final AnswerStreamer answerStreamer;
     private final AiProperties properties;
+    private final DailyModelCallCap dailyCap;
 
     public ChatService(PreChatRouter router, PromptBuilder promptBuilder, AnswerStreamer answerStreamer,
-                       AiProperties properties) {
+                       AiProperties properties, DailyModelCallCap dailyCap) {
         this.router = router;
         this.promptBuilder = promptBuilder;
         this.answerStreamer = answerStreamer;
         this.properties = properties;
+        this.dailyCap = dailyCap;
     }
 
     /**
@@ -49,6 +52,11 @@ public class ChatService {
                 search == null ? 0.0 : search.bestScore(), chunks.size(), keys);
         if (result.route() == Route.WELCOME || result.route() == Route.DECLINE_BELOW_FLOOR) {
             return Flux.just(ChatEvent.token(result.replyText()), ChatEvent.done());
+        }
+
+        if (!dailyCap.tryAcquire()) {
+            log.warn("chat daily model-call cap reached");
+            return Flux.just(ChatEvent.token(ReplyTemplates.dailyLimitReached()), ChatEvent.done());
         }
 
         Flux<ChatEvent> tokens = guardedStream(

@@ -2,6 +2,8 @@ package com.shaahil.resumeapi.ai.chat;
 
 import com.shaahil.resumeapi.ai.AiProperties;
 import com.shaahil.resumeapi.ai.ingest.QuickFactsProvider;
+import com.shaahil.resumeapi.ai.limits.AiLimitsProperties;
+import com.shaahil.resumeapi.ai.limits.DailyModelCallCap;
 import com.shaahil.resumeapi.ai.retrieval.RetrievedChunk;
 import com.shaahil.resumeapi.ai.retrieval.SearchOutcome;
 import com.shaahil.resumeapi.ai.retrieval.SearchService;
@@ -13,6 +15,7 @@ import org.springframework.core.io.ByteArrayResource;
 import reactor.core.publisher.Flux;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -181,12 +184,35 @@ class ChatServiceTest {
             }
         };
 
-        List<ChatEvent> events = service(failing, streamer, fastChat(2, Duration.ofSeconds(5)))
+        List<ChatEvent> events = service(failing, streamer, fastChat(2, Duration.ofSeconds(5)), unlimitedCap())
                 .answer("What did he build?").collectList().block();
 
         assertThat(events).extracting(ChatEvent::type).containsExactly("token", "done");
         assertThat(events).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.fallback());
         assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void dailyCapStopsModelCallsButNotWelcomeOrDecline() {
+        AtomicInteger calls = new AtomicInteger();
+        AnswerStreamer streamer = (system, user) -> {
+            calls.incrementAndGet();
+            return Flux.just("ok");
+        };
+        DailyModelCallCap cap = new DailyModelCallCap(new AiLimitsProperties(10, 60, 1), Clock.systemUTC());
+        ChatService answering = service(answerOutcome(), streamer, null, cap);
+
+        List<ChatEvent> first = answering.answer("What did he build?").collectList().block();
+        List<ChatEvent> second = answering.answer("What did he build?").collectList().block();
+
+        assertThat(first).extracting(ChatEvent::type).containsExactly("token", "citations", "done");
+        assertThat(second).extracting(ChatEvent::type).containsExactly("token", "done");
+        assertThat(second).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.dailyLimitReached());
+        assertThat(calls).hasValue(1);
+
+        ChatService declining = service(new SearchOutcome(false, 0.1, List.of()), streamer, null, cap);
+        List<ChatEvent> declined = declining.answer("what is the weather").collectList().block();
+        assertThat(declined).first().extracting(ChatEvent::data).isEqualTo(ReplyTemplates.declineBelowFloor());
     }
 
     private static SearchOutcome answerOutcome() {
@@ -203,6 +229,15 @@ class ChatServiceTest {
     }
 
     private static ChatService service(SearchOutcome outcome, AnswerStreamer streamer, AiProperties.Chat chat) {
+        return service(outcome, streamer, chat, unlimitedCap());
+    }
+
+    private static DailyModelCallCap unlimitedCap() {
+        return new DailyModelCallCap(new AiLimitsProperties(10, 60, 1_000_000), Clock.systemUTC());
+    }
+
+    private static ChatService service(SearchOutcome outcome, AnswerStreamer streamer, AiProperties.Chat chat,
+                                       DailyModelCallCap cap) {
         SearchService searchService = new SearchService(null,
                 new AiProperties(new AiProperties.Retrieval(0.0, 0.0, 10, 5), null, null)) {
             @Override
@@ -210,15 +245,15 @@ class ChatServiceTest {
                 return outcome;
             }
         };
-        return service(searchService, streamer, chat);
+        return service(searchService, streamer, chat, cap);
     }
 
     private static ChatService service(SearchService searchService, AnswerStreamer streamer,
-                                       AiProperties.Chat chat) {
+                                       AiProperties.Chat chat, DailyModelCallCap cap) {
         PreChatRouter router = new PreChatRouter(searchService);
         PromptBuilder promptBuilder = new PromptBuilder(
                 new QuickFactsProvider(new ByteArrayResource("facts".getBytes(StandardCharsets.UTF_8))),
                 new AiProperties(null, null, null));
-        return new ChatService(router, promptBuilder, streamer, new AiProperties(null, chat, null));
+        return new ChatService(router, promptBuilder, streamer, new AiProperties(null, chat, null), cap);
     }
 }
